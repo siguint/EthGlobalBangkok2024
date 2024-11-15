@@ -1,1 +1,0 @@
-# EthGlobalBangkok2024
