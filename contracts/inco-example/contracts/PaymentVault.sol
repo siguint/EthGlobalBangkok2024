@@ -46,7 +46,7 @@ contract PaymentVault {
         _;
     }
 
-    function registerService(address receiver, einput encryptedPrice, bytes calldata priceProof) external onlyOwner returns (uint256) {
+    function registerService(address receiver, einput encryptedPrice, bytes calldata priceProof) external returns (uint256) {
         uint256 serviceId = nextServiceId++;
         services[serviceId] = Service({
             subscriptionPrice: TFHE.asEuint64(encryptedPrice, priceProof),

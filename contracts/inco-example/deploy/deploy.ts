@@ -5,22 +5,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const { deploy } = hre.deployments;
 
-  const deployed = await deploy("ConfidentialERC20", {
+  const deployedConfidentialERC20 = await deploy("ConfidentialERC20", {
     from: deployer,
     log: true,
   });
-
-  console.log(`ConfidentialToken contract deployed at: ${deployed.address}`);
 
   const deployedPaymentVault = await deploy("PaymentVault", {
     from: deployer,
+    args: [deployedConfidentialERC20.address],
     log: true,
-    args: [deployed.address],
   });
-
+  
+  console.log(`ConfidentialToken contract deployed at: ${deployedConfidentialERC20.address}`);
   console.log(`PaymentVault contract deployed at: ${deployedPaymentVault.address}`);
 };
 
 export default func;
-func.id = "deploy_confidentialERC20";
-func.tags = ["ConfidentialToken"];
+func.id = "deploy_confidentialERC20_paymentVault";
+func.tags = ["ConfidentialToken", "PaymentVault"];
