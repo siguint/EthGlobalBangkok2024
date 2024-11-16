@@ -1,6 +1,3 @@
-[submodule "vlayer/simple/lib/forge-std"]
-	path = vlayer/simple/lib/forge-std
-	url = https://github.com/foundry-rs/forge-std
-[submodule "vlayer/simple/dependencies/openzeppelin-contracts"]
-	path = vlayer/simple/dependencies/openzeppelin-contracts
-	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "contracts/inco"]
+	path = contracts/inco
+	url = https://github.com/Inco-fhevm/fhevm-hardhat-template-rivest
