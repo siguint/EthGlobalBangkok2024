@@ -11,6 +11,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 
   console.log(`ConfidentialToken contract deployed at: ${deployed.address}`);
+
+  const deployedPaymentVault = await deploy("PaymentVault", {
+    from: deployer,
+    log: true,
+    args: [deployed.address],
+  });
+
+  console.log(`PaymentVault contract deployed at: ${deployedPaymentVault.address}`);
 };
 
 export default func;

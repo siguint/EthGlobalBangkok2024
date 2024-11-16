@@ -14,6 +14,7 @@ contract PaymentVault {
         euint64 subscriptionPrice;
         address receiver;
         bool isActive;
+        euint64 donations; // Track encrypted donations for each service
     }
 
     mapping(uint256 => Service) public services; // serviceId => Service
@@ -26,6 +27,7 @@ contract PaymentVault {
     event ServiceDeactivated(uint256 indexed serviceId);
     event Deposited(uint256 indexed serviceId, eaddress indexed depositor);
     event Withdrawn(uint256 indexed serviceId, address indexed receiver);
+    event Donated(uint256 indexed serviceId, eaddress indexed donor);
 
     uint256 constant SUBSCRIPTION_PERIOD = 30 days;
 
@@ -49,7 +51,8 @@ contract PaymentVault {
         services[serviceId] = Service({
             subscriptionPrice: TFHE.asEuint64(encryptedPrice, priceProof),
             receiver: receiver,
-            isActive: true
+            isActive: true,
+            donations: TFHE.asEuint64(0)
         });
         emit ServiceRegistered(serviceId, receiver);
         return serviceId;
@@ -80,6 +83,20 @@ contract PaymentVault {
         lastPaymentTimestamp[serviceId][subscriber] = block.timestamp;
         
         emit Deposited(serviceId, subscriber);
+    }
+
+    function donate(uint256 serviceId, einput encryptedDonor, bytes calldata donorProof, einput encryptedAmount, bytes calldata amountProof) external {
+        require(services[serviceId].isActive, "Service not active");
+        eaddress donor = TFHE.asEaddress(encryptedDonor, donorProof);
+        euint64 amount = TFHE.asEuint64(encryptedAmount, amountProof);
+        
+        require(token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+        
+        services[serviceId].donations = TFHE.add(services[serviceId].donations, amount);
+        serviceTotalDeposits[serviceId] = TFHE.add(serviceTotalDeposits[serviceId], amount);
+        totalDeposits = TFHE.add(totalDeposits, amount);
+        
+        emit Donated(serviceId, donor);
     }
 
     function withdraw(uint256 serviceId, einput encryptedAmount, bytes calldata amountProof) external onlyServiceReceiver(serviceId) {
