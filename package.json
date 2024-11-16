@@ -1,0 +1,20 @@
+{
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ethers": "^6.11.1",
+    "fhevmjs": "^0.5.8",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "telegraf": "^4.15.3",
+    "typescript": "^5.3.3"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node bot/index.ts",
+    "dev": "ts-node-dev --respawn bot/index.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "ts-node-dev": "^2.0.0"
+  }
+}

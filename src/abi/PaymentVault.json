@@ -1,0 +1,38 @@
+{
+  "abi": [
+    {
+      "inputs": [{"name": "_token", "type": "address"}],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [{"name": "serviceId", "type": "uint256"}],
+      "name": "deactivateService",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {"name": "receiver", "type": "address"},
+        {"name": "encryptedPrice", "type": "bytes"},
+        {"name": "priceProof", "type": "bytes"}
+      ],
+      "name": "registerService",
+      "outputs": [{"name": "", "type": "uint256"}],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {"name": "serviceId", "type": "uint256"},
+        {"name": "encryptedSubscriber", "type": "bytes"},
+        {"name": "subscriberProof", "type": "bytes"}
+      ],
+      "name": "subscribe",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]
+} 
