@@ -1,3 +1,1 @@
-[submodule "contracts/inco"]
-	path = contracts/inco
-	url = https://github.com/Inco-fhevm/fhevm-hardhat-template-rivest
+
