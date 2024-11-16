@@ -1,4 +1,5 @@
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-verify";
 import dotenv from "dotenv";
 import * as fs from "fs-extra";
 import "hardhat-deploy";
@@ -187,6 +188,21 @@ const config: HardhatUserConfig = {
     outDir: "types",
     target: "ethers-v6",
   },
+  etherscan: {
+    apiKey: {
+      'rivest': 'empty'
+    },
+    customChains: [
+      {
+        network: "rivest",
+        chainId: 21097,
+        urls: {
+          apiURL: "https://api.explorer.rivest.inco.org/api",
+          browserURL: "https://explorer.rivest.inco.org"
+        }
+      }
+    ]
+  }
 };
 
 export default config;

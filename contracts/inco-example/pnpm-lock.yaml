@@ -31,7 +31,7 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(geae4jvdfg2eknoy6ku3h4qpgy)
       '@nomicfoundation/hardhat-verify':
-        specifier: ^1.0.0
+        specifier: ^1.1.1
         version: 1.1.1(hardhat@2.22.8(ts-node@10.9.2(@types/node@18.19.44)(typescript@5.5.4))(typescript@5.5.4))
       '@openzeppelin/contracts':
         specifier: ^5.0.2
