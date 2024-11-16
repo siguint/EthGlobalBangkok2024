@@ -45,9 +45,11 @@ class TelegramBot {
   constructor() {
     this.bot = new Telegraf<BotContext>(process.env.TELEGRAM_BOT_TOKEN!);
     this.provider = new ethers.JsonRpcProvider(process.env.ETHEREUM_RPC_URL);
+    
+    const contractArtifact = require('../contracts/inco-example/artifacts/contracts/PaymentVault.sol/PaymentVault.json');
     this.paymentVault = new ethers.Contract(
       process.env.CONTRACT_ADDRESS!,
-      require('../contracts/inco-example/artifacts/contracts/PaymentVault.sol/PaymentVault.json'),
+      contractArtifact.abi,
       this.provider
     );
     
@@ -104,7 +106,7 @@ class TelegramBot {
         return;
       }
 
-      const [_, channelUsername, contractAddress] = args;
+      const [_, channelUsername, receiverAddress] = args;
       
       if (!channelUsername.startsWith('@')) {
         await ctx.reply('Channel username must start with @ symbol');
@@ -112,12 +114,11 @@ class TelegramBot {
       }
 
       try {
-        ethers.getAddress(contractAddress); // Validate address format
+        ethers.getAddress(receiverAddress); // Validate address format
       } catch {
         await ctx.reply('Invalid contract address format');
         return;
       }
-
       const isAdmin = await this.verifyAdmin(channelUsername, ctx.from.id);
       if (!isAdmin) {
         await ctx.reply(
@@ -130,13 +131,14 @@ class TelegramBot {
       try {
         await this.db.run(
           'INSERT INTO channels (channel_id, added_by, contract_address) VALUES (?, ?, ?)',
-          [channelUsername, ctx.from.id.toString(), contractAddress]
+          [channelUsername, ctx.from.id.toString(), receiverAddress]
         );
 
-        const explorerLink = `https://explorer.rivest.inco.org/address/${contractAddress}`;
+        const explorerLink = `https://explorer.rivest.inco.org/address/${process.env.CONTRACT_ADDRESS}`;
         await ctx.reply(
           `Successfully added channel ${channelUsername} to subscription list!\n\n` +
-          `Contract address: ${contractAddress}\n` +
+          `Contract address: ${process.env.CONTRACT_ADDRESS}\n` +
+          `Service admin: ${receiverAddress}\n` +
           `View on Explorer: ${explorerLink}\n\n` +
           `Your channel is now ready for subscriptions.`,
         );
@@ -187,35 +189,114 @@ class TelegramBot {
           return;
         }
 
-        // Get FHEVM instance
-        const instance = await getFhevmInstance();
+        // Send user to encryption page
+        const encryptionUrl = `${process.env.ENCRYPTION_URL}?channel=${channelId}&contract=${channel.contract_address}`;
         
-        // Create encrypted input for the user ID
-        const input = instance.createEncryptedInput(
-          channel.contract_address,
-          this.provider
+        await ctx.reply(
+          'Please visit this URL to encrypt your address:\n\n' +
+          `${encryptionUrl}\n\n` +
+          'After encryption, use the /complete_subscription command with the encrypted subscriber address and proof:\n\n' +
+          '/complete_subscription <channel id> <encrypted_address>\n' +
+          'Then send the proof as a .txt file'
         );
-        
-        // Encrypt the user ID
-        input.add64(BigInt(userId));
-        const encryptedSubscriber = input.encrypt();
 
-        // Call smart contract
-        const tx = await this.paymentVault.subscribe(
-          channelId,
-          encryptedSubscriber
+        await ctx.answerCbQuery('Please check the instructions sent in chat');
+
+      } catch (error) {
+        console.error('Subscription error:', error);
+        await ctx.answerCbQuery('Error processing subscription. Please try again.');
+      }
+    });
+
+    // Handle subscription completion
+    this.bot.command('complete_subscription', async (ctx) => {
+      const userId = ctx.from.id.toString();
+      
+      // Get the full message text after the command
+      const fullText = ctx.message.text.substring('/complete_subscription'.length).trim();
+      
+      // Use a regex to match just the channel ID and encrypted address
+      const match = fullText.match(/^(\S+)\s+(\S+)$/);
+      
+      if (!match) {
+        await ctx.reply(
+          'Please provide: /complete_subscription <channel_id> <encrypted_address>\n' +
+          'Then send the proof as a .txt file'
         );
-        await tx.wait();
+        return;
+      }
+
+      const [_, channelId, encryptedAddress] = match;
+
+      try {
+        await ctx.reply('Please send the proof as a .txt file...');
+        
+        // Set up a one-time document listener for the proof
+        const proof = await new Promise<string>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Proof submission timeout'));
+          }, 120000);
+
+          // Create document handler middleware
+          const middleware = this.bot.on('document', async (ctx) => {
+            if (!ctx.message || !('document' in ctx.message)) {
+              return;
+            }
+
+            if (ctx.from?.id === parseInt(userId)) {
+              try {
+                const doc = ctx.message.document;
+                console.log('Processing document:', doc);
+
+                if (!doc.mime_type?.startsWith('text/')) {
+                  await ctx.reply('Please send the proof as a .txt file');
+                  return;
+                }
+
+                const file = await ctx.telegram.getFile(doc.file_id);
+                console.log('Got file:', file);
+
+                if (!file.file_path) throw new Error('Could not get file path');
+
+                const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+                console.log('Fetching from URL:', fileUrl);
+
+                const response = await fetch(fileUrl);
+                const proofText = await response.text();
+                console.log('Got proof text:', proofText.substring(0, 50) + '...');
+
+                clearTimeout(timeout);
+                resolve(proofText);
+              } catch (error) {
+                clearTimeout(timeout);
+                reject(error instanceof Error ? error : new Error(String(error)));
+              }
+            }
+          });
+        });
+
+        // Parse proof from text file
+        const proofText = proof.trim();
+        
+        // If proof is hex
+        if (proofText.startsWith('0x')) {
+            // Pass hex directly
+            await this.paymentVault.subscribe(encryptedAddress, proofText);
+        } else {
+          console.error('Proof is not hex:', proofText);
+          await ctx.reply('Invalid proof format. Proof must be a hex string starting with 0x');
+          return;
+        }
 
         await this.db.run(
           'INSERT INTO subscriptions (user_id, channel_id) VALUES (?, ?)',
           [userId, channelId]
         );
 
-        await ctx.answerCbQuery(`Successfully subscribed to ${channelId}`);
+        await ctx.reply('Successfully subscribed to the channel!');
       } catch (error) {
-        console.error('Subscription error:', error);
-        await ctx.answerCbQuery('Error processing subscription. Please try again.');
+        console.error('Subscription completion error:', error);
+        await ctx.reply('Error completing subscription. Please try again.');
       }
     });
   }
