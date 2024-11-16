@@ -8,3 +8,6 @@ bot.db
 __pycache__/
 *.py[cod]
 *$py.class
+
+# FHEVM
+node_modules/
